@@ -1,7 +1,11 @@
 #pragma once
 
 #include "SFSE/Impl/Stubs.h"
-#include "SFSE/Version.h"
+
+namespace RE
+{
+	class IMenu;
+}
 
 namespace SFSE
 {
@@ -20,11 +24,12 @@ namespace SFSE
 	class LoadInterface : public QueryInterface
 	{
 	public:
-		enum : std::uint32_t
+		enum InterfaceType : std::uint32_t
 		{
 			kInvalid = 0,
 			kMessaging,
 			kTrampoline,
+			kMenu,
 
 			kTotal
 		};
@@ -47,12 +52,12 @@ namespace SFSE
 
 		using EventCallback = std::add_pointer_t<void(Message* a_msg)>;
 
-		enum
+		enum Version : std::uint32_t
 		{
-			kVersion = 2
+			kVersion = 1
 		};
 
-		enum : std::uint32_t
+		enum MessageType : std::uint32_t
 		{
 			kPostLoad,
 			kPostPostLoad,
@@ -71,7 +76,7 @@ namespace SFSE
 	class TrampolineInterface
 	{
 	public:
-		enum
+		enum Version : std::uint32_t
 		{
 			kVersion = 1
 		};
@@ -85,9 +90,27 @@ namespace SFSE
 		[[nodiscard]] const detail::SFSETrampolineInterface* GetProxy() const;
 	};
 
+	class MenuInterface
+	{
+	public:
+		using RegCallback = void(RE::IMenu* a_menu);
+
+		enum Version : std::uint32_t
+		{
+			kVersion = 1
+		};
+
+		[[nodiscard]] std::uint32_t Version() const;
+
+		void Register(RegCallback* a_callback) const;
+
+	private:
+		[[nodiscard]] const detail::SFSEMenuInterface* GetProxy() const;
+	};
+
 	struct PluginInfo
 	{
-		enum
+		enum Version : std::uint32_t
 		{
 			kVersion = 1
 		};
@@ -100,39 +123,41 @@ namespace SFSE
 	struct PluginVersionData
 	{
 	public:
-		enum
+		enum Version : std::uint32_t
 		{
-			kVersion = 1,
+			kVersion = 1
 		};
 
-		constexpr void PluginVersion(std::uint32_t a_version) noexcept { pluginVersion = a_version; }
+		constexpr void PluginVersion(const REL::Version a_version) noexcept { pluginVersion = a_version.pack(); }
 
-		[[nodiscard]] constexpr std::uint32_t GetPluginVersion() const noexcept { return pluginVersion; }
+		[[nodiscard]] constexpr REL::Version GetPluginVersion() const noexcept { return REL::Version::unpack(pluginVersion); }
 
-		constexpr void PluginName(std::string_view a_plugin) noexcept { SetCharBuffer(a_plugin, std::span{ pluginName }); }
+		constexpr void PluginName(const std::string_view a_plugin) noexcept { SetCharBuffer(a_plugin, std::span{ pluginName }); }
 
 		[[nodiscard]] constexpr std::string_view GetPluginName() const noexcept { return std::string_view{ pluginName }; }
 
-		constexpr void AuthorName(std::string_view a_name) noexcept { SetCharBuffer(a_name, std::span{ author }); }
+		constexpr void AuthorName(const std::string_view a_name) noexcept { SetCharBuffer(a_name, std::span{ author }); }
 
 		[[nodiscard]] constexpr std::string_view GetAuthorName() const noexcept { return std::string_view{ author }; }
 
-		constexpr void UsesSigScanning(bool a_value) noexcept { addressIndependence = !a_value; }
+		constexpr void UsesSigScanning(const bool a_value) noexcept { SetOrClearBit(addressIndependence, 1 << 0, a_value); }
 
-		constexpr void UsesAddressLibrary(bool a_value) noexcept { addressIndependence = a_value; }
+		constexpr void UsesAddressLibrary(const bool a_value) noexcept { SetOrClearBit(addressIndependence, 1 << 1, a_value); }
 
-		constexpr void HasNoStructUse(bool a_value) noexcept { structureCompatibility = !a_value; }
+		constexpr void HasNoStructUse(const bool a_value) noexcept { SetOrClearBit(structureCompatibility, 1 << 0, a_value); }
 
-		constexpr void IsLayoutDependent(bool a_value) noexcept { structureCompatibility = a_value; }
+		constexpr void IsLayoutDependent(const bool a_value) noexcept { SetOrClearBit(structureCompatibility, 1 << 1, a_value); }
 
 		constexpr void CompatibleVersions(std::initializer_list<REL::Version> a_versions) noexcept
 		{
 			// must be zero-terminated
 			assert(a_versions.size() < std::size(compatibleVersions) - 1);
-			std::ranges::transform(a_versions, std::begin(compatibleVersions), [](const REL::Version& a_version) noexcept { return a_version.pack(); });
+			std::ranges::transform(a_versions, std::begin(compatibleVersions), [](const REL::Version& a_version) noexcept {
+				return a_version.pack();
+			});
 		}
 
-		constexpr void MinimumRequiredXSEVersion(REL::Version a_version) noexcept { xseMinimum = a_version.pack(); }
+		constexpr void MinimumRequiredXSEVersion(const REL::Version a_version) noexcept { xseMinimum = a_version.pack(); }
 
 		[[nodiscard]] static const PluginVersionData* GetSingleton() noexcept;
 
@@ -154,6 +179,14 @@ namespace SFSE
 			std::ranges::fill(a_dst, '\0');
 			std::ranges::copy(a_src, a_dst.begin());
 		}
+
+		static constexpr void SetOrClearBit(std::uint32_t& a_data, const std::uint32_t a_bit, const bool a_set) noexcept
+		{
+			if (a_set)
+				a_data |= a_bit;
+			else
+				a_data &= ~a_bit;
+		}
 	};
 
 	static_assert(offsetof(PluginVersionData, dataVersion) == 0x000);
@@ -167,6 +200,8 @@ namespace SFSE
 	static_assert(offsetof(PluginVersionData, reservedNonBreaking) == 0x254);
 	static_assert(offsetof(PluginVersionData, reservedBreaking) == 0x258);
 	static_assert(sizeof(PluginVersionData) == 0x25C);
-}  // namespace SFSE
+}
 
+#define SFSEPluginPreload(...) extern "C" [[maybe_unused]] __declspec(dllexport) bool SFSEPlugin_Preload(__VA_ARGS__)
 #define SFSEPluginLoad(...) extern "C" [[maybe_unused]] __declspec(dllexport) bool SFSEPlugin_Load(__VA_ARGS__)
+#define SFSEPluginVersion extern "C" [[maybe_unused]] __declspec(dllexport) constinit SFSE::PluginVersionData SFSEPlugin_Version

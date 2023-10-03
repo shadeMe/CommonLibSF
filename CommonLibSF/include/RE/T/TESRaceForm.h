@@ -1,14 +1,17 @@
 #pragma once
 
 #include "RE/B/BaseFormComponent.h"
-#include "RE/T/TESRace.h"
 
 namespace RE
 {
+	class TESRace;
+
 	class TESRaceForm : public BaseFormComponent
 	{
 	public:
 		SF_RTTI_VTABLE(TESRaceForm);
+
+		~TESRaceForm() override;
 
 		// members
 		TESRace* formRace;  // 08

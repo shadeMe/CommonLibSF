@@ -93,7 +93,7 @@ namespace RE
 		virtual TESObjectREFR*                     AsReference1();                                                   // 45
 		[[nodiscard]] virtual const TESObjectREFR* AsReference2() const;                                             // 46
 		virtual void                               Unk_47();                                                         // 47
-		virtual void                               Unk_48();                                                         // 48
+		virtual const char*                        GetDisplayFullBaseName();                                         // 48
 		virtual void                               Unk_49();                                                         // 49
 		virtual void                               Unk_4A();                                                         // 4A
 		virtual void                               Unk_4B();                                                         // 4B
@@ -120,17 +120,24 @@ namespace RE
 		virtual void                               Unk_60();                                                         // 60
 		virtual void                               Unk_61();                                                         // 61
 
+		std::uint64_t DecRefCount() const
+		{
+			using func_t = decltype(&TESForm::DecRefCount);
+			REL::Relocation<func_t> func{ REL::ID(35164) };
+			return func(this);
+		}
+
 		[[nodiscard]] static TESForm* LookupByID(std::uint32_t a_formID)
 		{
 			using func_t = decltype(&TESForm::LookupByID);
-			REL::Relocation<func_t> func{ REL::Offset(0x014D7DB0) };
+			REL::Relocation<func_t> func{ REL::ID(86125) };
 			return func(a_formID);
 		}
 
 		[[nodiscard]] static TESForm* LookupByEditorID(const char* a_editorID)
 		{
 			using func_t = decltype(&TESForm::LookupByEditorID);
-			REL::Relocation<func_t> func{ REL::Offset(0x014D7F0C) };
+			REL::Relocation<func_t> func{ REL::ID(86127) };
 			return func(a_editorID);
 		}
 
@@ -144,14 +151,14 @@ namespace RE
 		[[nodiscard]] bool Is(FormType a_type) const noexcept { return GetFormType() == a_type; }
 
 		template <class... Args>
-		[[nodiscard]] bool Is(Args... a_args) const noexcept  //
+		[[nodiscard]] bool Is(Args... a_args) const noexcept
 			requires(std::same_as<Args, FormType> && ...)
 		{
 			return (Is(a_args) || ...);
 		}
 
 		template <class T>
-		[[nodiscard]] bool Is() const noexcept  //
+		[[nodiscard]] bool Is() const noexcept
 			requires(std::derived_from<T, TESForm> &&
 					 !std::is_pointer_v<T> &&
 					 !std::is_reference_v<T>)
@@ -171,7 +178,7 @@ namespace RE
 		[[nodiscard]] bool IsNot(FormType a_type) const noexcept { return !Is(a_type); }
 
 		template <class... Args>
-		[[nodiscard]] bool IsNot(Args... a_args) const noexcept  //
+		[[nodiscard]] bool IsNot(Args... a_args) const noexcept
 			requires(std::same_as<Args, FormType> && ...)
 		{
 			return (IsNot(a_args) && ...);
