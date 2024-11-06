@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.29)
 message("Using toolchain file ${CMAKE_TOOLCHAIN_FILE}.")
 
 # singleton target across multiple projects
